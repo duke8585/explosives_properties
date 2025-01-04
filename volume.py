@@ -47,7 +47,7 @@ explosives = {
     # nitroguanidines
     "NQ": "CH4N4O2",
     # ANFO
-    "ANFO": "N20H40O30C1",  # 10x for everything but C, because 95% AN, 5% F mixture
+    "ANFO_3:1": "CN6H14O9",  # 10x for everything but C, because 95% AN, 5% F mixture, https://www.e-education.psu.edu/mng230/node/685 3 moles of nh4no3, 1 mole of fuel oil
     # others
     "Ammonium perchlorate": "NH4Cl1O4",
     "Ammonium chlorate": "NH4ClO3",
