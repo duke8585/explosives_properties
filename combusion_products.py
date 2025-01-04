@@ -1,5 +1,7 @@
+import logging
 from oxygen_balance_emp import parse_sum_formula
 
+logging.basicConfig(level=logging.INFO)
 
 # def detonation_products(molecule):
 #     # Extract atom counts
@@ -61,69 +63,86 @@ def detonation_products(atom_counts):
         "H": atom_counts.get("H", 0),
     }
 
-    print(f"Initial elements: {elements}")
+    logging.info(f"Initial elements: {elements}")
 
     # Step 1: Carbon atoms react with the available oxygen to form CO
     CO = min(elements["C"], elements["O"])
     elements["C"] -= CO
     elements["O"] -= CO
 
-    print(f"After forming CO: CO={CO:.3f}, elements={elements}")
+    # TODO there can be C left!!!
+
+    logging.debug(
+        f"After forming CO: CO={CO:.3f}, elements={elements},  C_sum={elements["C"] + CO:.3f}"
+    )
 
     # Step 2: N atoms combine to form N2
     N2 = elements["N"] / 2
     elements["N"] -= N2 * 2
 
-    print(f"After forming N2: N2={N2:.3f}, elements={elements}")
+    logging.debug(
+        f"After forming N2: N2={N2:.3f}, elements={elements}, C_sum={elements["C"] + CO:.3f}"
+    )
 
     # Step 3: 1/3 of the CO produced is converted to C + CO2
-    CO2 = CO / 3
-    C_from_CO2 = CO2
-    CO -= CO2
+    CO_to_C_and_CO2 = CO / 3
+    CO2 = CO_to_C_and_CO2 / 2
+    C_from_CO = CO_to_C_and_CO2 / 2
+    CO -= CO_to_C_and_CO2
 
-    print(
-        f"After converting CO to CO2: CO2={CO2:.3f}, CO={CO:.3f}, elements={elements}"
+    logging.debug(
+        f"After converting CO to CO2: CO2={CO2:.3f}, CO={CO:.3f}, elements={elements}, C_sum={elements["C"] + C_from_CO+ CO+ CO2:.3f}"
     )
 
     # Step 4: 1/6 of the original CO produced reacts with any available H in the compound to form C + H2O
-    H2O = min(CO / 6, elements["H"] / 2)
-    C_from_H2O = H2O
-    CO -= H2O
-    elements["H"] -= H2O * 2
+    CO_for_H2O = CO / 6  # NOTE 1 O for 1 H20
+    H2O = CO_for_H2O
+    elements["H"] -= H2O * 2  # NOTE 2 H consumed for each CO O
+    C_from_H2O = CO_for_H2O
+    CO -= CO_for_H2O
 
-    print(f"After forming H2O: H2O={H2O:.3f}, CO={CO:.3f}, elements={elements}")
+    logging.debug(
+        f"After forming H2O from CO: H2O={H2O:.3f}, CO={CO:.3f}, elements={elements}, C_sum={elements["C"] + C_from_H2O + C_from_CO+ CO+ CO2:.3f}"
+    )
 
-    print(f"Remaining elements before STEP 5: {elements}")
+    elements["C"] += C_from_H2O + C_from_CO  # NOTE merging intermediate Cs
 
-    # Step 5: if there is still oxygen left, C and CO are converted to CO2
+    logging.debug(
+        f"🟢 Remaining elements before STEP 5: {elements}, C_sum={elements["C"] + C_from_H2O + C_from_CO+ CO+ CO2}"
+    )
+
+    # Step 5: if there is still oxygen left, C to CO, H2 to H2O and CO to CO2
     if elements["O"] > 0:
-        # Convert C_from_CO2 and C_from_H2O to CO2
-        C_to_CO2 = min(C_from_CO2 + C_from_H2O, elements["O"] / 2)
-        elements["O"] -= C_to_CO2 * 2
-        CO2 += C_to_CO2
+        # print(elements["C"] + C_from_H2O + C_from_CO)  # TODO delete
+        # print(min(elements["C"] + C_from_H2O + C_from_CO, elements["O"]))  # TODO delete
+        # print(elements["O"])  # TODO delete
+        # Convert remaining C to CO
+        ox_C_to_CO = min(elements["C"], elements["O"])
+        elements["C"] -= ox_C_to_CO
+        elements["O"] -= ox_C_to_CO
 
-        print(
-            f"After converting C_from_CO2 and C_from_H2O to CO2: CO2={CO2:.3f}, elements={elements}"
+        CO += ox_C_to_CO
+
+        logging.debug(
+            f"After oxidizing remaining C to CO: CO={CO:.3f}, elements={elements}"
         )
 
-        # Convert remaining C to CO2
-        C_to_CO2 = min(elements["C"], elements["O"] / 2)
-        elements["C"] -= C_to_CO2
-        elements["O"] -= C_to_CO2 * 2
-        CO2 += C_to_CO2
+        # Convert remaining H to H2O with remaining O, else as H2
+        ox_H_to_H2O = elements["H"]
+        H2O += 0.5 * ox_H_to_H2O
+        elements["H"] -= ox_H_to_H2O
+        elements["O"] -= 0.5 * ox_H_to_H2O  # NOTE 0.5 O for 1 H
 
-        print(
-            f"After converting remaining C to CO2: CO2={CO2:.3f}, elements={elements}"
-        )
+        logging.debug(f"After oxidizing H to H2O: H2O={H2O:.3f}, elements={elements}")
 
         # Convert remaining CO to CO2
-        CO_to_CO2 = min(CO, elements["O"])
-        CO -= CO_to_CO2
-        elements["O"] -= CO_to_CO2
-        CO2 += CO_to_CO2
+        ox_CO_to_CO2 = CO
+        CO -= ox_CO_to_CO2
+        elements["O"] -= ox_CO_to_CO2
+        CO2 += ox_CO_to_CO2
 
-        print(
-            f"After converting remaining CO to CO2: CO2={CO2:.3f}, CO={CO:.3f}, elements={elements}"
+        logging.debug(
+            f"After oxidizing remaining CO to CO2: CO2={CO2:.3f}, CO={CO:.3f}, elements={elements}"
         )
 
     # Collect the detonation products
@@ -134,10 +153,11 @@ def detonation_products(atom_counts):
         "H2O": H2O,
         "C(s)": elements["C"],
         "O2": elements["O"] / 2,  # Remaining oxygen as O2
+        "H2": elements["H"] / 2,  # Remaining hydrogen as H2
     }
 
-    print(f"Final products: {products}")
-    print("=" * 10, "\n" * 2)
+    logging.info(f"Final products: {products}")
+    logging.debug("=" * 10, "\n" * 2)
     return products
 
 

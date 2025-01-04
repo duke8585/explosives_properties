@@ -3,7 +3,7 @@ p_std = 1.013e5  # Pa or N/m^2
 
 
 def sum_gas_moles(molecules: dict):
-    gases = ("CO2", "CO", "H2O", "N2", "O2")
+    gases = ("CO2", "CO", "H2O", "N2", "O2", "H2")
     return sum(n for name, n in molecules.items() if name in gases)
 
 
@@ -16,10 +16,6 @@ from oxygen_balance_emp import parse_sum_formula
 from combusion_products import detonation_products, combust_products
 from weight import calculate_molar_weight
 from oxygen_balance_emp import oxygen_balance_molecule
-
-molecule = parse_sum_formula("C7H5N3O6")
-
-detonation_products_volume = gas_volume(sum_gas_moles(detonation_products(molecule)))
 
 
 def detonation_volume_per_kg(molecule: dict, t: float):
