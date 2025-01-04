@@ -44,7 +44,8 @@ from oxygen_balance_emp import parse_sum_formula
 
 
 def detonation_products(atom_counts):
-    """mechanism following following reaction hierarchy:
+    """
+    mechanism following following reaction hierarchy:
     1. Carbon atoms react with the available oxygen to form CO
     2. N atoms combine to form N2
     3. 1/3 of the CO produced is converted to C + CO2
@@ -60,19 +61,29 @@ def detonation_products(atom_counts):
         "H": atom_counts.get("H", 0),
     }
 
+    print(f"Initial elements: {elements}")
+
     # Step 1: Carbon atoms react with the available oxygen to form CO
     CO = min(elements["C"], elements["O"])
     elements["C"] -= CO
     elements["O"] -= CO
 
+    print(f"After forming CO: CO={CO:.3f}, elements={elements}")
+
     # Step 2: N atoms combine to form N2
     N2 = elements["N"] / 2
     elements["N"] -= N2 * 2
+
+    print(f"After forming N2: N2={N2:.3f}, elements={elements}")
 
     # Step 3: 1/3 of the CO produced is converted to C + CO2
     CO2 = CO / 3
     C_from_CO2 = CO2
     CO -= CO2
+
+    print(
+        f"After converting CO to CO2: CO2={CO2:.3f}, CO={CO:.3f}, elements={elements}"
+    )
 
     # Step 4: 1/6 of the original CO produced reacts with any available H in the compound to form C + H2O
     H2O = min(CO / 6, elements["H"] / 2)
@@ -80,17 +91,30 @@ def detonation_products(atom_counts):
     CO -= H2O
     elements["H"] -= H2O * 2
 
-    # Step 5.1: if there is still oxygen left, C is converted to CO
+    print(f"After forming H2O: H2O={H2O:.3f}, CO={CO:.3f}, elements={elements}")
+
+    print(f"Remaining elements before STEP 5: {elements}")
+
+    # Step 5: if there is still oxygen left, C and CO are converted to CO2
     if elements["O"] > 0:
+        # Convert C_from_CO2 and C_from_H2O to CO2
+        C_to_CO2 = min(C_from_CO2 + C_from_H2O, elements["O"] / 2)
+        elements["O"] -= C_to_CO2 * 2
+        CO2 += C_to_CO2
+
+        print(
+            f"After converting C_from_CO2 and C_from_H2O to CO2: CO2={CO2:.3f}, elements={elements}"
+        )
+
         # Convert remaining C to CO2
         C_to_CO2 = min(elements["C"], elements["O"] / 2)
         elements["C"] -= C_to_CO2
         elements["O"] -= C_to_CO2 * 2
         CO2 += C_to_CO2
 
-    # Step 5.2: if there is still oxygen left, C= is converted to CO2
-
-    if elements["O"] > 0:
+        print(
+            f"After converting remaining C to CO2: CO2={CO2:.3f}, elements={elements}"
+        )
 
         # Convert remaining CO to CO2
         CO_to_CO2 = min(CO, elements["O"])
@@ -98,15 +122,22 @@ def detonation_products(atom_counts):
         elements["O"] -= CO_to_CO2
         CO2 += CO_to_CO2
 
+        print(
+            f"After converting remaining CO to CO2: CO2={CO2:.3f}, CO={CO:.3f}, elements={elements}"
+        )
+
     # Collect the detonation products
     products = {
         "CO": CO,
         "N2": N2,
         "CO2": CO2,
         "H2O": H2O,
-        "C(s)": elements["C"] + C_from_CO2 + C_from_H2O,
+        "C(s)": elements["C"],
+        "O2": elements["O"] / 2,  # Remaining oxygen as O2
     }
 
+    print(f"Final products: {products}")
+    print("=" * 10, "\n" * 2)
     return products
 
 
